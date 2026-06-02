@@ -1,45 +1,183 @@
-# <img src="framework-docs/src/docs/spring-framework.png" width="80" height="80"> Spring Framework [![Build Status](https://github.com/spring-projects/spring-framework/actions/workflows/build-and-deploy-snapshot.yml/badge.svg?branch=5.3.x)](https://github.com/spring-projects/spring-framework/actions/workflows/build-and-deploy-snapshot.yml?query=branch%3A5.3.x) [![Revved up by Develocity](https://img.shields.io/badge/Revved%20up%20by-Develocity-06A0CE?logo=Gradle&labelColor=02303A)](https://ge.spring.io/scans?search.rootProjectNames=spring)
+# Spring Framework 5.3.41 Security Fork
 
-## Community Fork Notice
+This repository is a self-maintained Spring Framework fork published for projects
+that still need a Spring Framework 5.3.x based build with selected security
+backports.
 
-This branch publishes a self-maintained Spring Framework 5.3.41 build under the Maven group `io.github.duanluan.springframework`.
-It is based on `spring-projects/spring-framework:v5.3.39` with selected security backports for CVE-2024-38819 and CVE-2024-38820.
-It is not an official Spring release; official Spring artifacts remain under the `org.springframework` Maven group.
-The original Apache License, Version 2.0 remains unchanged.
+It is not an official Spring release. Official Spring Framework artifacts are
+published by the Spring team under the `org.springframework` Maven group.
 
-This is the home of the Spring Framework: the foundation for all [Spring projects](https://spring.io/projects). Collectively the Spring Framework and the family of Spring projects are often referred to simply as "Spring". 
+## Repository
 
-Spring provides everything required beyond the Java programming language for creating enterprise applications for a wide range of scenarios and architectures. Please read the [Overview](https://docs.spring.io/spring/docs/current/spring-framework-reference/overview.html#spring-introduction) section as reference for a more complete introduction.
+- GitHub repository: <https://github.com/duanluan/spring-framework>
+- Security branch: <https://github.com/duanluan/spring-framework/tree/5.3.41-security>
+- Base source: <https://github.com/spring-projects/spring-framework/tree/v5.3.39>
+- Base version: `spring-projects/spring-framework:v5.3.39`
+- Published version: `5.3.41`
+- Maven group: `io.github.duanluan.springframework`
+- Java package names: `org.springframework.*`
 
-## Code of Conduct
+## Maven Central Coordinates
 
-This project is governed by the [Spring Code of Conduct](CODE_OF_CONDUCT.adoc). By participating, you are expected to uphold this code of conduct. Please report unacceptable behavior to spring-code-of-conduct@pivotal.io.
+The artifacts are published with the fork Maven group:
 
-## Access to Binaries
+```text
+io.github.duanluan.springframework:spring-framework-bom:5.3.41
+io.github.duanluan.springframework:spring-core:5.3.41
+io.github.duanluan.springframework:spring-context:5.3.41
+io.github.duanluan.springframework:spring-web:5.3.41
+io.github.duanluan.springframework:spring-webmvc:5.3.41
+io.github.duanluan.springframework:spring-webflux:5.3.41
+```
 
-For access to artifacts or a distribution zip, see the [Spring Framework Artifacts](https://github.com/spring-projects/spring-framework/wiki/Spring-Framework-Artifacts) wiki page.
+Example Maven BOM usage:
 
-## Documentation
+```xml
+<dependencyManagement>
+	<dependencies>
+		<dependency>
+			<groupId>io.github.duanluan.springframework</groupId>
+			<artifactId>spring-framework-bom</artifactId>
+			<version>5.3.41</version>
+			<type>pom</type>
+			<scope>import</scope>
+		</dependency>
+	</dependencies>
+</dependencyManagement>
+```
 
-The Spring Framework maintains reference documentation ([published](https://docs.spring.io/spring-framework/docs/current/spring-framework-reference/) and [source](src/docs/asciidoc)), GitHub [wiki pages](https://github.com/spring-projects/spring-framework/wiki), and an
-[API reference](https://docs.spring.io/spring-framework/docs/current/javadoc-api/). There are also [guides and tutorials](https://spring.io/guides) across Spring projects.
+Example Gradle BOM usage:
 
-## Micro-Benchmarks
+```groovy
+dependencies {
+	implementation platform("io.github.duanluan.springframework:spring-framework-bom:5.3.41")
+	implementation "io.github.duanluan.springframework:spring-webmvc"
+}
+```
 
-See the [Micro-Benchmarks](https://github.com/spring-projects/spring-framework/wiki/Micro-Benchmarks) wiki page.
+If a project still receives `org.springframework:spring-*` through transitive
+dependencies, add dependency substitution for the Spring modules used by that
+project:
 
-## Build from Source
+```groovy
+configurations.configureEach {
+	resolutionStrategy.dependencySubstitution {
+		substitute module("org.springframework:spring-core") using module("io.github.duanluan.springframework:spring-core:5.3.41")
+		substitute module("org.springframework:spring-context") using module("io.github.duanluan.springframework:spring-context:5.3.41")
+		substitute module("org.springframework:spring-web") using module("io.github.duanluan.springframework:spring-web:5.3.41")
+		substitute module("org.springframework:spring-webmvc") using module("io.github.duanluan.springframework:spring-webmvc:5.3.41")
+		substitute module("org.springframework:spring-webflux") using module("io.github.duanluan.springframework:spring-webflux:5.3.41")
+	}
+}
+```
 
-See the [Build from Source](https://github.com/spring-projects/spring-framework/wiki/Build-from-Source) wiki page and the [CONTRIBUTING.md](CONTRIBUTING.md) file.
+## Security Backports
 
-## Continuous Integration Builds
+This branch applies selected fixes for the following Spring Framework advisories:
 
-Information regarding CI builds can be found in the [Spring Framework Concourse pipeline](ci/README.adoc) documentation.
+- CVE-2024-38819: Path traversal with static resources in WebMvc.fn and WebFlux.fn
+- CVE-2024-38820: DataBinder case-insensitive binding issue caused by locale-specific case conversion
 
-## Stay in Touch
+The public Spring Framework OSS repository does not provide an official
+`v5.3.41` tag. This branch therefore does not claim to be byte-for-byte equal to
+the commercial Spring Framework 5.3.41 build. It is based on `v5.3.39` and
+backports the relevant public fix behavior for the two advisories above.
 
-Follow [@SpringCentral](https://twitter.com/springcentral), [@SpringFramework](https://twitter.com/springframework), and its [team members](https://twitter.com/springframework/lists/team/members) on Twitter. In-depth articles can be found at [The Spring Blog](https://spring.io/blog/), and releases are announced via our [news feed](https://spring.io/blog/category/news).
+## CVE-2024-38820 Fix
 
-## License
+Official advisory:
 
-The Spring Framework is released under version 2.0 of the [Apache License](https://www.apache.org/licenses/LICENSE-2.0).
+- <https://spring.io/security/cve-2024-38820>
+
+Public Spring Framework commit used as reference:
+
+- <https://github.com/spring-projects/spring-framework/commit/23656aebc6c7d0f9faff1080981eb4d55eff296c>
+
+Fix idea:
+
+- `DataBinder` lowercases disallowed field names with `Locale.ROOT`.
+- Field matching also lowercases candidate fields with `Locale.ROOT`.
+- This avoids locale-specific conversions such as Turkish `i`/`I` behavior.
+
+Files changed:
+
+- `spring-context/src/main/java/org/springframework/validation/DataBinder.java`
+- `spring-context/src/test/java/org/springframework/validation/DataBinderTests.java`
+
+Regression test:
+
+```bash
+./gradlew :spring-context:test --tests org.springframework.validation.DataBinderTests.bindingWithDisallowedFieldsUsesLocaleIndependentLowerCase
+```
+
+## CVE-2024-38819 Fix
+
+Official advisory:
+
+- <https://spring.io/security/cve-2024-38819>
+
+Public Spring Framework comparison used as reference:
+
+- <https://github.com/spring-projects/spring-framework/compare/v6.1.13...v6.1.14>
+
+Fix idea:
+
+- Validate the original request path before static resource lookup.
+- Validate percent-encoded input paths after decoding and path processing.
+- Normalize duplicate slashes, backslashes, leading slashes, and encoded path segments before the final traversal check.
+- Reject resolved resource paths that contain encoded traversal segments.
+- Keep the resource inside the configured static resource location.
+
+Files changed:
+
+- `spring-webmvc/src/main/java/org/springframework/web/servlet/function/PathResourceLookupFunction.java`
+- `spring-webmvc/src/test/java/org/springframework/web/servlet/function/PathResourceLookupFunctionTests.java`
+- `spring-webflux/src/main/java/org/springframework/web/reactive/function/server/PathResourceLookupFunction.java`
+- `spring-webflux/src/test/java/org/springframework/web/reactive/function/server/PathResourceLookupFunctionTests.java`
+
+Regression tests:
+
+```bash
+./gradlew :spring-webmvc:test --tests org.springframework.web.servlet.function.PathResourceLookupFunctionTests.pathTraversalIsRejected
+./gradlew :spring-webflux:test --tests org.springframework.web.reactive.function.server.PathResourceLookupFunctionTests.pathTraversalIsRejected
+```
+
+## Verification
+
+The branch was verified with targeted regression tests and local publication:
+
+```bash
+./gradlew :spring-context:test --tests org.springframework.validation.DataBinderTests.bindingWithDisallowedFieldsUsesLocaleIndependentLowerCase
+./gradlew :spring-webmvc:test --tests org.springframework.web.servlet.function.PathResourceLookupFunctionTests.pathTraversalIsRejected
+./gradlew :spring-webflux:test --tests org.springframework.web.reactive.function.server.PathResourceLookupFunctionTests.pathTraversalIsRejected
+./gradlew publishToMavenLocal
+```
+
+The current project integration also verified that these modules resolve to
+`io.github.duanluan.springframework:5.3.41`:
+
+- `spring-core`
+- `spring-context`
+- `spring-web`
+- `spring-webmvc`
+- `spring-webflux`
+
+## Scanner Notes
+
+This fork changes Maven coordinates. Some scanners decide findings by Maven
+coordinates, some by SBOM package URL, some by class names, and some by CPE. If a
+scanner cannot understand this self-maintained coordinate, attach this README,
+the commit diff, and the regression test results as evidence.
+
+This branch is focused on CVE-2024-38819 and CVE-2024-38820. It does not remove
+deprecated Spring classes such as `HttpInvokerServiceExporter`; scanners that
+report CVE-2016-1000027 by class presence may still flag `spring-web`.
+
+## License and Notice
+
+The original Spring Framework license and notice files are retained:
+
+- `LICENSE.txt`
+- `NOTICE.txt`
+
+Spring Framework is released under the Apache License, Version 2.0.
