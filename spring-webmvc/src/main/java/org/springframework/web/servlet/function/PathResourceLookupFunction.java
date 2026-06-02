@@ -62,11 +62,14 @@ class PathResourceLookupFunction implements Function<ServerRequest, Optional<Res
 
 		pathContainer = this.pattern.extractPathWithinPattern(pathContainer);
 		String path = processPath(pathContainer.value());
-		if (path.contains("%")) {
-			path = StringUtils.uriDecode(path, StandardCharsets.UTF_8);
-		}
 		if (!StringUtils.hasLength(path) || isInvalidPath(path)) {
 			return Optional.empty();
+		}
+		if (isInvalidEncodedInputPath(path)) {
+			return Optional.empty();
+		}
+		if (path.contains("%")) {
+			path = StringUtils.uriDecode(path, StandardCharsets.UTF_8);
 		}
 
 		try {
@@ -84,6 +87,36 @@ class PathResourceLookupFunction implements Function<ServerRequest, Optional<Res
 	}
 
 	private String processPath(String path) {
+		path = StringUtils.replace(path, "\\", "/");
+		path = cleanDuplicateSlashes(path);
+		path = cleanLeadingSlash(path);
+		return normalizePath(path);
+	}
+
+	private String cleanDuplicateSlashes(String path) {
+		StringBuilder sb = null;
+		char prev = 0;
+		for (int i = 0; i < path.length(); i++) {
+			char curr = path.charAt(i);
+			try {
+				if ((curr == '/') && (prev == '/')) {
+					if (sb == null) {
+						sb = new StringBuilder(path.substring(0, i));
+					}
+					continue;
+				}
+				if (sb != null) {
+					sb.append(path.charAt(i));
+				}
+			}
+			finally {
+				prev = curr;
+			}
+		}
+		return (sb != null ? sb.toString() : path);
+	}
+
+	private String cleanLeadingSlash(String path) {
 		boolean slash = false;
 		for (int i = 0; i < path.length(); i++) {
 			if (path.charAt(i) == '/') {
@@ -100,6 +133,21 @@ class PathResourceLookupFunction implements Function<ServerRequest, Optional<Res
 		return (slash ? "/" : "");
 	}
 
+	private static String normalizePath(String path) {
+		if (path.contains("%")) {
+			try {
+				path = StringUtils.uriDecode(path, StandardCharsets.UTF_8);
+			}
+			catch (IllegalArgumentException ex) {
+				return "";
+			}
+			if (path.contains("../")) {
+				path = StringUtils.cleanPath(path);
+			}
+		}
+		return path;
+	}
+
 	private boolean isInvalidPath(String path) {
 		if (path.contains("WEB-INF") || path.contains("META-INF")) {
 			return true;
@@ -110,7 +158,26 @@ class PathResourceLookupFunction implements Function<ServerRequest, Optional<Res
 				return true;
 			}
 		}
-		return path.contains("..") && StringUtils.cleanPath(path).contains("../");
+		return path.contains("../");
+	}
+
+	private boolean isInvalidEncodedInputPath(String path) {
+		if (path.contains("%")) {
+			try {
+				String decodedPath = StringUtils.uriDecode(path, StandardCharsets.UTF_8);
+				if (isInvalidPath(decodedPath)) {
+					return true;
+				}
+				decodedPath = processPath(decodedPath);
+				if (isInvalidPath(decodedPath)) {
+					return true;
+				}
+			}
+			catch (IllegalArgumentException ex) {
+				// May not be possible to decode...
+			}
+		}
+		return false;
 	}
 
 	private boolean isResourceUnderLocation(Resource resource) throws IOException {
@@ -141,8 +208,22 @@ class PathResourceLookupFunction implements Function<ServerRequest, Optional<Res
 		if (!resourcePath.startsWith(locationPath)) {
 			return false;
 		}
-		return !resourcePath.contains("%") ||
-				!StringUtils.uriDecode(resourcePath, StandardCharsets.UTF_8).contains("../");
+		return !isInvalidEncodedResourcePath(resourcePath);
+	}
+
+	private boolean isInvalidEncodedResourcePath(String resourcePath) {
+		if (resourcePath.contains("%")) {
+			try {
+				String decodedPath = StringUtils.uriDecode(resourcePath, StandardCharsets.UTF_8);
+				if (decodedPath.contains("../") || decodedPath.contains("..\\")) {
+					return true;
+				}
+			}
+			catch (IllegalArgumentException ex) {
+				// May not be possible to decode...
+			}
+		}
+		return false;
 	}
 
 

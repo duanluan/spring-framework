@@ -83,6 +83,20 @@ public class PathResourceLookupFunctionTests {
 	}
 
 	@Test
+	public void pathTraversalIsRejected() {
+		ClassPathResource location = new ClassPathResource("org/springframework/web/reactive/function/server/");
+
+		PathResourceLookupFunction function = new PathResourceLookupFunction("/resources/**", location);
+		MockServerHttpRequest mockRequest = MockServerHttpRequest.get("https://localhost/resources/child/../response.txt").build();
+		ServerRequest request = new DefaultServerRequest(MockServerWebExchange.from(mockRequest), Collections.emptyList());
+		Mono<Resource> result = function.apply(request);
+
+		StepVerifier.create(result)
+				.expectComplete()
+				.verify();
+	}
+
+	@Test
 	public void notFound() throws Exception {
 		ClassPathResource location = new ClassPathResource("org/springframework/web/reactive/function/server/");
 

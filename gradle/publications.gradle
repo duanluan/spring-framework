@@ -1,4 +1,5 @@
 apply plugin: "maven-publish"
+apply plugin: "signing"
 
 publishing {
 	publications {
@@ -6,12 +7,12 @@ publishing {
 			pom {
 				afterEvaluate {
 					name = project.description
-					description = project.description
+					description = "${project.description} (community-maintained fork based on Spring Framework 5.3.39 with selected security backports; not an official Spring release)"
 				}
-				url = "https://github.com/spring-projects/spring-framework"
+				url = "https://github.com/duanluan/spring-framework"
 				organization {
-					name = "Spring IO"
-					url = "https://spring.io/projects/spring-framework"
+					name = "duanluan"
+					url = "https://github.com/duanluan"
 				}
 				licenses {
 					license {
@@ -21,20 +22,20 @@ publishing {
 					}
 				}
 				scm {
-					url = "https://github.com/spring-projects/spring-framework"
-					connection = "scm:git:git://github.com/spring-projects/spring-framework"
-					developerConnection = "scm:git:git://github.com/spring-projects/spring-framework"
+					url = "https://github.com/duanluan/spring-framework"
+					connection = "scm:git:https://github.com/duanluan/spring-framework.git"
+					developerConnection = "scm:git:ssh://git@github.com/duanluan/spring-framework.git"
 				}
 				developers {
 					developer {
-						id = "jhoeller"
-						name = "Juergen Hoeller"
-						email = "jhoeller@pivotal.io"
+						id = "duanluan"
+						name = "duanluan"
+						email = "duanluan@outlook.com"
 					}
 				}
 				issueManagement {
 					system = "GitHub"
-					url = "https://github.com/spring-projects/spring-framework/issues"
+					url = "https://github.com/duanluan/spring-framework/issues"
 				}
 			}
 			versionMapping {
@@ -47,6 +48,34 @@ publishing {
 			}
 		}
 	}
+	repositories {
+		maven {
+			name = "centralPortal"
+			url = "https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2/"
+			credentials {
+				username = findProperty("centralPortalUsername") ?: System.getenv("CENTRAL_PORTAL_USERNAME") ?: System.getenv("CENTRAL_USERNAME")
+				password = findProperty("centralPortalPassword") ?: System.getenv("CENTRAL_PORTAL_PASSWORD") ?: System.getenv("CENTRAL_PASSWORD")
+			}
+		}
+	}
+}
+
+signing {
+	def signingKey = findProperty("signingKey") ?: System.getenv("SIGNING_KEY")
+	def signingPassword = findProperty("signingPassword") ?: System.getenv("SIGNING_PASSWORD")
+	required {
+		!version.toString().endsWith("-SNAPSHOT") &&
+				gradle.taskGraph.allTasks.any { task ->
+					task.name.startsWith("publish") && !task.name.contains("MavenLocal")
+				}
+	}
+	if (signingKey && signingPassword) {
+		useInMemoryPgpKeys(signingKey.toString(), signingPassword.toString())
+	}
+	else {
+		useGpgCmd()
+	}
+	sign publishing.publications.mavenJava
 }
 
 configureDeploymentRepository(project)
@@ -59,6 +88,34 @@ void configureDeploymentRepository(Project project) {
 				it.url = project.property("deploymentRepository")
 				it.name = "deployment"
 			}
+		}
+	}
+}
+
+if (project == rootProject) {
+	tasks.register("centralPortalUploadDefaultRepository") {
+		group = "publishing"
+		description = "Moves artifacts uploaded through the OSSRH Staging API into a user-managed Central Portal deployment."
+		doLast {
+			def username = findProperty("centralPortalUsername") ?: System.getenv("CENTRAL_PORTAL_USERNAME") ?: System.getenv("CENTRAL_USERNAME")
+			def password = findProperty("centralPortalPassword") ?: System.getenv("CENTRAL_PORTAL_PASSWORD") ?: System.getenv("CENTRAL_PASSWORD")
+			def namespace = findProperty("centralPortalNamespace") ?: System.getenv("CENTRAL_PORTAL_NAMESPACE") ?: "io.github.duanluan"
+			if (!username || !password) {
+				throw new GradleException("Central Portal token is required: set centralPortalUsername and centralPortalPassword, or CENTRAL_PORTAL_USERNAME and CENTRAL_PORTAL_PASSWORD.")
+			}
+			def auth = java.util.Base64.encoder.encodeToString("${username}:${password}".getBytes("UTF-8"))
+			def url = new URL("https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/${namespace}?publishing_type=user_managed")
+			def connection = url.openConnection()
+			connection.setRequestMethod("POST")
+			connection.setRequestProperty("Authorization", "Bearer ${auth}")
+			connection.setDoOutput(true)
+			connection.outputStream.withCloseable { it.write(new byte[0]) }
+			def status = connection.responseCode
+			if (status < 200 || status >= 300) {
+				def body = connection.errorStream != null ? connection.errorStream.getText("UTF-8") : connection.inputStream.getText("UTF-8")
+				throw new GradleException("Central Portal upload failed with HTTP ${status}: ${body}")
+			}
+			logger.lifecycle("Central Portal upload request accepted for namespace ${namespace}.")
 		}
 	}
 }

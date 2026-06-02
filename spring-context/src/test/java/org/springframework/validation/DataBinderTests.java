@@ -705,6 +705,28 @@ class DataBinderTests {
 	}
 
 	@Test
+	void bindingWithDisallowedFieldsUsesLocaleIndependentLowerCase() throws BindException {
+		Locale defaultLocale = Locale.getDefault();
+		try {
+			Locale.setDefault(new Locale("tr"));
+			TestBean rod = new TestBean();
+			DataBinder binder = new DataBinder(rod);
+			binder.setDisallowedFields("FAVOURITECOLOUR");
+			MutablePropertyValues pvs = new MutablePropertyValues();
+			pvs.add("favouriteColour", "BLUE");
+
+			binder.bind(pvs);
+			binder.close();
+
+			assertThat(rod.getFavouriteColour()).isNull();
+			assertThat(binder.getBindingResult().getSuppressedFields()).containsExactly("favouriteColour");
+		}
+		finally {
+			Locale.setDefault(defaultLocale);
+		}
+	}
+
+	@Test
 	void bindingWithAllowedAndDisallowedFields() throws BindException {
 		TestBean rod = new TestBean();
 		DataBinder binder = new DataBinder(rod);

@@ -61,6 +61,17 @@ class PathResourceLookupFunctionTests {
 	}
 
 	@Test
+	void pathTraversalIsRejected() {
+		ClassPathResource location = new ClassPathResource("org/springframework/web/servlet/function/");
+		PathResourceLookupFunction function = new PathResourceLookupFunction("/resources/**", location);
+		ServerRequest request = initRequest("GET", "/resources/child/../response.txt");
+
+		Optional<Resource> result = function.apply(request);
+
+		assertThat(result.isPresent()).isFalse();
+	}
+
+	@Test
 	void notFound() {
 		ClassPathResource location = new ClassPathResource("org/springframework/web/reactive/function/server/");
 		PathResourceLookupFunction function = new PathResourceLookupFunction("/resources/**", location);
