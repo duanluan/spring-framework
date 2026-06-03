@@ -58,6 +58,15 @@ public class ByteArrayHttpMessageConverterTests {
 	}
 
 	@Test
+	public void readWithLargeContentLength() throws IOException {
+		byte[] body = new byte[]{0x1, 0x2};
+		MockHttpInputMessage inputMessage = new MockHttpInputMessage(body);
+		inputMessage.getHeaders().setContentLength(Integer.MAX_VALUE + 1L);
+		byte[] result = converter.read(byte[].class, inputMessage);
+		assertThat(result).as("Invalid result").isEqualTo(body);
+	}
+
+	@Test
 	public void write() throws IOException {
 		MockHttpOutputMessage outputMessage = new MockHttpOutputMessage();
 		byte[] body = new byte[]{0x1, 0x2};
